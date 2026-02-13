@@ -58,9 +58,121 @@ frontend/
 │   ├── App.tsx         # Main app component with routing
 │   ├── main.tsx        # Entry point
 │   └── index.css       # Global styles
+├── hack/               # Scripts: deploy_openshift.sh, undeploy_openshift.sh
+├── openshift/          # OpenShift/Kubernetes manifests (Deployment, Service, Route)
 ├── public/             # Static assets
+├── Dockerfile          # Container build (build + serve with Node)
 └── package.json        # Dependencies and scripts
 ```
+
+## Docker and OpenShift
+
+The **Dockerfile** is in this directory. OpenShift/Kubernetes manifests (Deployment, Service, Route, Pod) are in the **openshift/** folder. Use the **hack/** scripts to deploy or remove the app from OpenShift:
+
+```bash
+./hack/deploy_openshift.sh    # deploy (run from frontend directory)
+./hack/undeploy_openshift.sh  # remove from cluster
+```
+
+### Prerequisites
+
+- Docker (or Podman) for building the image
+- OpenShift CLI (`oc`) or Kubernetes CLI (`kubectl`)
+- Access to an OpenShift or Kubernetes cluster
+
+### Build the image
+
+From the **frontend** directory:
+
+```bash
+docker build -t atc-frontend:latest .
+```
+
+From the repository root:
+
+```bash
+docker build -t atc-frontend:latest -f frontend/Dockerfile frontend
+```
+
+Push to an OpenShift internal registry (replace with your registry and namespace):
+
+```bash
+docker build -t image-registry.openshift-image-registry.svc:5000/atc-transcript-analyzer/atc-frontend:latest .
+docker push image-registry.openshift-image-registry.svc:5000/atc-transcript-analyzer/atc-frontend:latest
+```
+
+Or use OpenShift BuildConfig for in-cluster builds (from frontend directory):
+
+```bash
+oc new-build --name atc-frontend --binary --strategy=docker
+oc start-build atc-frontend --from-dir=. --follow
+```
+
+### Deploy on OpenShift
+
+1. **Create namespace** (if needed):
+
+   ```bash
+   oc create namespace atc-transcript-analyzer
+   ```
+
+2. **Apply manifests** from the frontend directory:
+
+   ```bash
+   oc apply -f openshift/deployment.yaml -n atc-transcript-analyzer
+   oc apply -f openshift/service.yaml -n atc-transcript-analyzer
+   oc apply -f openshift/route.yaml -n atc-transcript-analyzer
+   ```
+
+   Or from the repository root:
+
+   ```bash
+   oc apply -f frontend/openshift/deployment.yaml -n atc-transcript-analyzer
+   oc apply -f frontend/openshift/service.yaml -n atc-transcript-analyzer
+   oc apply -f frontend/openshift/route.yaml -n atc-transcript-analyzer
+   ```
+
+   Or use Kustomize (from frontend directory):
+
+   ```bash
+   oc apply -k openshift/ -n atc-transcript-analyzer
+   ```
+
+3. **Set image** (if not using in-cluster build):
+
+   ```bash
+   oc set image deployment/atc-frontend frontend=<your-registry>/atc-frontend:latest -n atc-transcript-analyzer
+   ```
+
+4. **Get the Route URL**:
+
+   ```bash
+   oc get route atc-frontend -n atc-transcript-analyzer
+   ```
+
+### Deploy on Kubernetes (no Route)
+
+Kubernetes does not have the `Route` type. Apply Deployment and Service only:
+
+```bash
+kubectl create namespace atc-transcript-analyzer
+kubectl apply -f openshift/deployment.yaml -n atc-transcript-analyzer
+kubectl apply -f openshift/service.yaml -n atc-transcript-analyzer
+```
+
+Then expose the service (e.g. `LoadBalancer`) or add an Ingress as needed.
+
+### OpenShift artifacts (openshift/ folder)
+
+| File               | Description |
+|--------------------|-------------|
+| `deployment.yaml`  | Deployment (manages Pods and ReplicaSet) |
+| `service.yaml`     | ClusterIP Service |
+| `route.yaml`       | OpenShift Route (external HTTPS) |
+| `pod.yaml`         | Standalone Pod (optional, dev/debug) |
+| `kustomization.yaml` | Kustomize wiring |
+
+The app listens on port **3000**. Liveness and readiness probes use path `/`.
 
 ## Pages
 

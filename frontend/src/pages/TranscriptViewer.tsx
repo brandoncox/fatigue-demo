@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertCircle, Clock, MessageSquare } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Clock } from 'lucide-react'
 import { TranscriptEntry } from '../types'
 import { mockTranscript } from '../data/mockData'
 

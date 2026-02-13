@@ -7,7 +7,6 @@ interface TimelineChartProps {
 
 export default function TimelineChart({ report }: TimelineChartProps) {
   // Generate timeline data points based on shift duration
-  const startTime = new Date(report.fatigueAnalysis.metrics.hoursOnDuty * 60 * 60 * 1000)
   const hours = report.fatigueAnalysis.metrics.hoursOnDuty
   
   // Create data points for the timeline

@@ -43,13 +43,6 @@ export default function AnalysisResults() {
     })
   }
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
