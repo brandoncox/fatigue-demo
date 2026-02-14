@@ -94,26 +94,19 @@ From the repository root:
 docker build -t atc-frontend:latest -f frontend/Dockerfile frontend
 ```
 
-Push to an OpenShift internal registry (replace with your registry and namespace):
-
-```bash
-docker build -t image-registry.openshift-image-registry.svc:5000/atc-transcript-analyzer/atc-frontend:latest .
-docker push image-registry.openshift-image-registry.svc:5000/atc-transcript-analyzer/atc-frontend:latest
-```
-
-Or use OpenShift BuildConfig for in-cluster builds (from frontend directory):
-
-```bash
-oc new-build --name atc-frontend --binary --strategy=docker
-oc start-build atc-frontend --from-dir=. --follow
-```
-
 ### Deploy on OpenShift
 
 1. **Create namespace** (if needed):
 
    ```bash
    oc create namespace atc-transcript-analyzer
+   ```
+
+2. **Create and Start builds**
+
+   ```bash
+   oc new-build --name atc-frontend --binary --strategy=docker
+   oc start-build atc-frontend --from-dir=. --follow
    ```
 
 2. **Apply manifests** from the frontend directory:
@@ -123,54 +116,12 @@ oc start-build atc-frontend --from-dir=. --follow
    oc apply -f openshift/service.yaml -n atc-transcript-analyzer
    oc apply -f openshift/route.yaml -n atc-transcript-analyzer
    ```
-
-   Or from the repository root:
-
-   ```bash
-   oc apply -f frontend/openshift/deployment.yaml -n atc-transcript-analyzer
-   oc apply -f frontend/openshift/service.yaml -n atc-transcript-analyzer
-   oc apply -f frontend/openshift/route.yaml -n atc-transcript-analyzer
-   ```
-
-   Or use Kustomize (from frontend directory):
-
-   ```bash
-   oc apply -k openshift/ -n atc-transcript-analyzer
-   ```
-
-3. **Set image** (if not using in-cluster build):
-
-   ```bash
-   oc set image deployment/atc-frontend frontend=<your-registry>/atc-frontend:latest -n atc-transcript-analyzer
-   ```
-
+   
 4. **Get the Route URL**:
 
    ```bash
    oc get route atc-frontend -n atc-transcript-analyzer
    ```
-
-### Deploy on Kubernetes (no Route)
-
-Kubernetes does not have the `Route` type. Apply Deployment and Service only:
-
-```bash
-kubectl create namespace atc-transcript-analyzer
-kubectl apply -f openshift/deployment.yaml -n atc-transcript-analyzer
-kubectl apply -f openshift/service.yaml -n atc-transcript-analyzer
-```
-
-Then expose the service (e.g. `LoadBalancer`) or add an Ingress as needed.
-
-### OpenShift artifacts (openshift/ folder)
-
-| File               | Description |
-|--------------------|-------------|
-| `deployment.yaml`  | Deployment (manages Pods and ReplicaSet) |
-| `service.yaml`     | ClusterIP Service |
-| `route.yaml`       | OpenShift Route (external HTTPS) |
-| `pod.yaml`         | Standalone Pod (optional, dev/debug) |
-| `kustomization.yaml` | Kustomize wiring |
 
 The app listens on port **3000**. Liveness and readiness probes use path `/`.
 
