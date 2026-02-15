@@ -13,10 +13,25 @@ FastAPI backend for the ATC Transcript Analyzer. It runs analysis jobs (transcri
 ### Prerequisites
 
 - **Python 3.10+**
+- **Docker** (for running MongoDB in a container)
 - **Ollama** with the `llama3.2:3b` model
 - (Optional) AWS credentials and S3 access if you use real S3/transcribe logic
 
-### 1. Ollama
+### 1. Run MongoDB in a Docker container
+
+The API stores analysis reports in MongoDB. Run MongoDB in a container:
+
+```bash
+docker run -d --name atc-mongo -p 27017:27017 mongo:7
+```
+
+MongoDB will be available at `mongodb://localhost:27017`. The API uses database `atc_analyzer` and collection `reports` by default (override with `MONGODB_DB` and `MONGODB_COLLECTION` if needed).
+
+- **Stop:** `docker stop atc-mongo`
+- **Start again:** `docker start atc-mongo`
+- **Remove container:** `docker rm -f atc-mongo` (data in the container is lost unless you use a volume)
+
+### 2. Ollama
 
 Install [Ollama](https://ollama.com) and pull the model:
 
@@ -27,7 +42,7 @@ ollama run llama3.2:3b   # optional: verify it runs
 
 Keep Ollama running so the API can reach it at `http://localhost:11434`.
 
-### 2. Virtual environment and dependencies
+### 3. Virtual environment and dependencies
 
 From the `backend-api` directory:
 
@@ -37,7 +52,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Run the API
+### 4. Run the API
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -50,6 +65,9 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `MONGODB_URI` | `mongodb://localhost:27017` | MongoDB connection string |
+| `MONGODB_DB` | `atc_analyzer` | Database name for reports |
+| `MONGODB_COLLECTION` | `reports` | Collection name for reports |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL (set in `agents.py` or override via code) |
 | AWS credentials | — | For S3 / transcription if you implement those calls |
 
