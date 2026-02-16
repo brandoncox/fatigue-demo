@@ -1,0 +1,5 @@
+# For librosa version (no ffmpeg required)
+openai-whisper
+librosa
+soundfile
+numpy
