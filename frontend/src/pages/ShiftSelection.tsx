@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Settings, Search, CheckCircle2, Circle, Play } from 'lucide-react'
+import { Settings, Search, CheckCircle2, Circle, Play, Upload } from 'lucide-react'
 import { Shift } from '../types'
 import { mockShifts } from '../data/mockData'
 
@@ -50,10 +50,19 @@ export default function ShiftSelection() {
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">ATC Transcript Analyzer</h1>
-          <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/upload')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload Audio</span>
+            </button>
+            <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+              <Settings className="w-5 h-5" />
+              <span>Settings</span>
+            </button>
+          </div>
         </div>
       </header>
 
