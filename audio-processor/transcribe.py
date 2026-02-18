@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Audio Transcription Script using OpenAI Whisper (librosa version)
+Audio Transcription Script using OpenAI Whisper
 
-This version uses librosa instead of pydub, avoiding the ffmpeg dependency.
+Transcribes audio files directly using Whisper and outputs JSON with metadata.
 """
 
 import os
@@ -10,22 +10,17 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any
 import whisper
-import librosa
-import soundfile as sf
-import numpy as np
 
 
 # Configuration
 RAW_DIR = "raw"
-INPUT_DIR = "input"
 OUTPUT_DIR = "output"
-CHUNK_LENGTH_SEC = 30  # 30 seconds per chunk
 WHISPER_MODEL = "base"  # Options: tiny, base, small, medium, large
 
 
 def ensure_directories() -> None:
     """Create necessary directories if they don't exist."""
-    for directory in [RAW_DIR, INPUT_DIR, OUTPUT_DIR]:
+    for directory in [RAW_DIR, OUTPUT_DIR]:
         Path(directory).mkdir(parents=True, exist_ok=True)
         print(f"✓ Directory ensured: {directory}")
 
@@ -55,72 +50,137 @@ def get_audio_files(directory: str) -> List[Path]:
     return sorted(audio_files)
 
 
-def split_audio_file(
-    input_path: Path,
-    output_dir: str,
-    chunk_length_sec: int = CHUNK_LENGTH_SEC
-) -> List[Path]:
+def generate_audio_metadata(audio_path: Path) -> Dict[str, Any]:
     """
-    Split an audio file into smaller chunks using librosa.
+    Generate metadata for the audio file by parsing the filename.
+    
+    Expected filename pattern: FACILITY-POSITION-Month-DD-YYYY-HHMMZ.mp3
+    Example: KORD1N2-06C-Feb-12-2026-0000Z.mp3
     
     Args:
-        input_path: Path to the input audio file
-        output_dir: Directory to save chunks
-        chunk_length_sec: Length of each chunk in seconds
+        audio_path: Path to the audio file
         
     Returns:
-        List of paths to the created chunk files
+        Dictionary containing metadata fields
     """
-    print(f"  Loading audio: {input_path.name}")
+    from datetime import datetime, timedelta
     
-    # Load audio file
-    audio, sample_rate = librosa.load(str(input_path), sr=None, mono=True)
+    filename = audio_path.stem
+    parts = filename.split('-')
     
-    # Calculate chunk size in samples
-    chunk_size = chunk_length_sec * sample_rate
+    # Default metadata values (used if parsing fails)
+    metadata = {
+        "shift_id": f"shift_{filename}",
+        "controller_id": "CTR_000",
+        "facility": "facility_001",
+        "start_time": "2024-01-15T06:00:00Z",
+        "end_time": "2024-01-15T14:00:00Z",
+        "position": "tower",
+        "schedule_type": "2-2-1",
+        "traffic_count_avg": 8
+    }
     
-    # Split into chunks
-    num_chunks = int(np.ceil(len(audio) / chunk_size))
-    chunk_paths = []
+    try:
+        if len(parts) >= 6:
+            # Extract facility and position from filename
+            # KORD1N2-06C-Feb-12-2026-0000Z.mp3
+            facility = parts[0]  # KORD1N2 -> KORD
+            position = parts[1]  # 06C
+            
+            # Parse date components: Feb-12-2026-0000Z
+            month_str = parts[2]  # Feb
+            day = parts[3]        # 12
+            year = parts[4]       # 2026
+            time_str = parts[5].replace('Z', '')  # 0000
+            
+            # Convert month name to number
+            month_map = {
+                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+                'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+                'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+            }
+            month = month_map.get(month_str, '01')
+            
+            # Format time (0000 -> 00:00)
+            hour = time_str[:2] if len(time_str) >= 2 else '00'
+            minute = time_str[2:4] if len(time_str) >= 4 else '00'
+            
+            # Create ISO timestamp for start time
+            start_time = f"{year}-{month}-{day.zfill(2)}T{hour}:{minute}:00Z"
+            
+            # Calculate end time (assume 8-hour shift)
+            start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            end_dt = start_dt + timedelta(hours=8)
+            end_time = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            
+            # Generate shift ID from timestamp
+            shift_id = f"shift_{year}{month}{day}_{hour}{minute}"
+            
+            # Determine controller_id based on position (example logic)
+            # You can customize this mapping
+            controller_id = f"CTR_{hash(position) % 900 + 100}"  # Generates CTR_XXX
+            
+            # Determine traffic count based on time of day (example logic)
+            hour_int = int(hour)
+            if 6 <= hour_int < 10:  # Morning rush
+                traffic_count_avg = 15
+            elif 10 <= hour_int < 14:  # Mid-day
+                traffic_count_avg = 10
+            elif 14 <= hour_int < 18:  # Afternoon
+                traffic_count_avg = 12
+            elif 18 <= hour_int < 22:  # Evening
+                traffic_count_avg = 8
+            else:  # Night/early morning
+                traffic_count_avg = 5
+            
+            # Update metadata with parsed values
+            metadata.update({
+                "shift_id": shift_id,
+                "controller_id": controller_id,
+                "facility": facility,
+                "start_time": start_time,
+                "end_time": end_time,
+                "position": position,
+                "schedule_type": "2-2-1",  # Default schedule type
+                "traffic_count_avg": traffic_count_avg
+            })
+            
+            print(f"  Parsed metadata: {facility}, Position {position}, {start_time}")
+            
+    except Exception as e:
+        print(f"  Warning: Could not parse metadata from filename: {e}")
+        print(f"  Using default metadata values")
     
-    base_name = input_path.stem
-    output_path = Path(output_dir)
-    
-    for i in range(num_chunks):
-        start_idx = i * chunk_size
-        end_idx = min((i + 1) * chunk_size, len(audio))
-        chunk = audio[start_idx:end_idx]
-        
-        chunk_name = f"{base_name}_chunk_{i:04d}.wav"
-        chunk_path = output_path / chunk_name
-        
-        # Save chunk as WAV file
-        sf.write(str(chunk_path), chunk, sample_rate)
-        chunk_paths.append(chunk_path)
-    
-    print(f"  Created {len(chunk_paths)} chunks")
-    return chunk_paths
+    return metadata
 
 
 def transcribe_audio_file(
     audio_path: Path,
-    model: whisper.Whisper
+    model: whisper.Whisper,
+    metadata: Dict[str, Any]
 ) -> Dict[str, Any]:
     """
-    Transcribe an audio file using Whisper.
+    Transcribe an audio file using Whisper and combine with metadata.
     
     Args:
         audio_path: Path to the audio file
         model: Loaded Whisper model
+        metadata: Metadata dictionary for the audio file
         
     Returns:
-        Dictionary containing transcription results
+        Dictionary containing transcription results and metadata
     """
+    print(f"  Transcribing: {audio_path.name}")
     result = model.transcribe(str(audio_path))
     
-    return {
-        "file": audio_path.name,
-        "text": result["text"].strip(),
+    # Build complete output with metadata at root level
+    transcription_data = {
+        # Metadata fields at root level
+        **metadata,
+        
+        # Transcription data
+        "original_file": audio_path.name,
+        "transcription": result["text"].strip(),
         "language": result.get("language", "unknown"),
         "segments": [
             {
@@ -132,74 +192,8 @@ def transcribe_audio_file(
             for seg in result.get("segments", [])
         ]
     }
-
-
-def transcribe_chunks(
-    chunk_paths: List[Path],
-    model: whisper.Whisper
-) -> List[Dict[str, Any]]:
-    """
-    Transcribe multiple audio chunks.
     
-    Args:
-        chunk_paths: List of paths to audio chunks
-        model: Loaded Whisper model
-        
-    Returns:
-        List of transcription results
-    """
-    transcriptions = []
-    
-    for i, chunk_path in enumerate(chunk_paths, 1):
-        print(f"  Transcribing chunk {i}/{len(chunk_paths)}: {chunk_path.name}")
-        transcription = transcribe_audio_file(chunk_path, model)
-        transcriptions.append(transcription)
-    
-    return transcriptions
-
-
-def combine_transcriptions(
-    transcriptions: List[Dict[str, Any]],
-    original_filename: str
-) -> Dict[str, Any]:
-    """
-    Combine chunk transcriptions into a single result.
-    
-    Args:
-        transcriptions: List of individual chunk transcriptions
-        original_filename: Name of the original audio file
-        
-    Returns:
-        Combined transcription dictionary
-    """
-    full_text = " ".join(t["text"] for t in transcriptions)
-    
-    # Adjust segment timestamps based on chunk offset
-    all_segments = []
-    time_offset = 0.0
-    
-    for chunk_data in transcriptions:
-        for segment in chunk_data["segments"]:
-            adjusted_segment = {
-                "id": len(all_segments),
-                "start": segment["start"] + time_offset,
-                "end": segment["end"] + time_offset,
-                "text": segment["text"]
-            }
-            all_segments.append(adjusted_segment)
-        
-        # Update offset for next chunk (approximate)
-        if chunk_data["segments"]:
-            last_segment = chunk_data["segments"][-1]
-            time_offset += last_segment["end"]
-    
-    return {
-        "original_file": original_filename,
-        "transcription": full_text,
-        "language": transcriptions[0]["language"] if transcriptions else "unknown",
-        "chunks_processed": len(transcriptions),
-        "segments": all_segments
-    }
+    return transcription_data
 
 
 def save_transcription_json(
@@ -234,7 +228,7 @@ def process_audio_file(
     model: whisper.Whisper
 ) -> None:
     """
-    Process a single audio file: split, transcribe, and save.
+    Process a single audio file: generate metadata, transcribe, and save.
     
     Args:
         audio_path: Path to the audio file
@@ -243,24 +237,22 @@ def process_audio_file(
     print(f"\nProcessing: {audio_path.name}")
     print("=" * 60)
     
-    # Split audio into chunks
-    chunk_paths = split_audio_file(audio_path, INPUT_DIR)
+    # Generate metadata for this audio file
+    metadata = generate_audio_metadata(audio_path)
+    print(f"  Generated metadata for shift: {metadata['shift_id']}")
     
-    # Transcribe chunks
-    transcriptions = transcribe_chunks(chunk_paths, model)
-    
-    # Combine results
-    combined = combine_transcriptions(transcriptions, audio_path.name)
+    # Transcribe audio file directly
+    transcription_data = transcribe_audio_file(audio_path, model, metadata)
     
     # Save to JSON
-    save_transcription_json(combined, OUTPUT_DIR, audio_path.name)
+    save_transcription_json(transcription_data, OUTPUT_DIR, audio_path.name)
     
     print(f"✓ Completed: {audio_path.name}")
 
 
 def main() -> None:
     """Main execution function."""
-    print("Audio Transcription Pipeline (librosa version)")
+    print("Audio Transcription Pipeline")
     print("=" * 60)
     
     # Ensure directories exist
