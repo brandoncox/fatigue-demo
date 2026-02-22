@@ -1,0 +1,33 @@
+{
+  "shift_id": "shift_20250215_001",
+  "controller_id": "CTR_001",
+  "facility": "KORD Tower 1",
+  "start_time": "2025-02-15T06:00:00Z",
+  "end_time": "2025-02-15T14:00:00Z",
+  "position": "tower",
+  "schedule_type": "2-2-1",
+  "traffic_count_avg": 8,
+  "transcript": "This is a long cleaned up version of the transcript that has the timestamps and speaker",
+  "processing_status": "processed|error|processing",
+  "fatigue": {
+    "fatigue_score": 45,
+    "severity": "medium",
+    "indicators": [...],
+    "requires_attention": false,
+    "summary": "...",
+    "metrics": {...}
+  },
+  "safety": {
+    "safety_score": 20,
+    "issues_found": [...],
+    "requires_immediate_review": false,
+    "summary": "..."
+  },
+  "summary": {
+    "executive_summary": "...",
+    "key_findings": [...],
+    "timeline": [...],
+    "recommendations": [...],
+    "priority_level": "low"
+  }
+}

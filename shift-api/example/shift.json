@@ -1,0 +1,56 @@
+{
+  "shift_id": "shift_20240115_123",
+  "controller_id": "CTR_123",
+  "date": "2024-01-15",
+  "shift_time": "06:00-14:00",
+  "position": "tower",
+  "status": "completed|processing|error",
+  "executive_summary": "Controller demonstrated moderate fatigue in final 2 hours of 8-hour shift. Response times increased by 40% and hesitations were above baseline. No safety violations detected. Fatigue levels consistent with 7th consecutive working day on 2-2-1 schedule.",
+  
+  "fatigue_analysis": {
+    "score": 58,
+    "severity": "moderate",
+    "trend": "increasing",
+    "indicators": [
+      {
+        "type": "response_time",
+        "evidence": "Average response increased from 2.1s to 3.5s in hours 6-8",
+        "severity": "medium"
+      },
+      {
+        "type": "hesitations",
+        "evidence": "12 filler words detected vs baseline of 3-4",
+        "severity": "medium"
+      }
+    ],
+    "metrics": {
+      "avg_response_time": 2.8,
+      "hesitation_count": 12,
+      "hours_on_duty": 8
+    }
+  },
+  
+  "safety_analysis": {
+    "score": 15,
+    "severity": "low",
+    "issues_found": [],
+    "requires_immediate_review": false,
+    "summary": "No safety violations detected. All readbacks correct. Standard phraseology maintained throughout shift."
+  },
+  
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Monitor next shift closely for continued fatigue",
+      "rationale": "Fatigue increasing toward end of shift"
+    },
+    {
+      "priority": 2,
+      "action": "Consider scheduling day off before next 2-2-1 rotation",
+      "rationale": "7 consecutive days may be contributing to fatigue"
+    }
+  ],
+  
+  "requires_attention": true,
+  "priority_level": "medium"
+}
