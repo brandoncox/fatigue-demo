@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Upload, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react'
+import { uploadAndAnalyzeShift } from '../services/api'
 
 interface UploadFormData {
   shiftId: string
@@ -164,14 +165,20 @@ export default function UploadAudio() {
     setIsSubmitting(true)
 
     try {
-      // In a real app, this would upload to backend API
-      // For now, we'll simulate the upload
-      const formDataToSend = new FormData()
-      formDataToSend.append('file', audioFile!)
-      formDataToSend.append('metadata', JSON.stringify(formData))
+      // Convert form data to API format (snake_case)
+      const metadata = {
+        shift_id: formData.shiftId,
+        controller_id: formData.controllerId,
+        facility: formData.facility,
+        start_time: formData.startTime,
+        end_time: formData.endTime,
+        position: formData.position,
+        schedule_type: formData.scheduleType,
+        traffic_count_avg: formData.trafficCountAvg,
+      }
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Call API to upload audio and metadata
+      await uploadAndAnalyzeShift(metadata, audioFile!)
 
       // Show success message
       setSuccessMessage(`Successfully queued analysis for shift ${formData.shiftId}`)
@@ -194,7 +201,8 @@ export default function UploadAudio() {
         navigate('/')
       }, 2000)
     } catch (error) {
-      setErrors({ submit: 'Failed to upload audio. Please try again.' })
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload audio. Please try again.'
+      setErrors({ submit: errorMessage })
     } finally {
       setIsSubmitting(false)
     }

@@ -6,8 +6,12 @@ export interface Shift {
   endTime: string;
   position: string;
   scheduleType: string;
+  status: 'queued' | 'processing' | 'completed' | 'error';
   trafficCountAvg?: number;
   analyzed: boolean;
+  fatigueScore?: number;
+  safetyScore?: number;
+  requiresAttention?: boolean;
 }
 
 export interface FatigueAnalysis {

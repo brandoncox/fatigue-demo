@@ -10,8 +10,8 @@ function App() {
       <Routes>
         <Route path="/" element={<ShiftSelection />} />
         <Route path="/upload" element={<UploadAudio />} />
-        <Route path="/shift/:shiftId" element={<AnalysisResults />} />
-        <Route path="/shift/:shiftId/transcript" element={<TranscriptViewer />} />
+        <Route path="/shifts/:shiftId" element={<AnalysisResults />} />
+        <Route path="/shifts/:shiftId/transcript" element={<TranscriptViewer />} />
       </Routes>
     </BrowserRouter>
   )
